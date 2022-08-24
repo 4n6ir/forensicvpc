@@ -60,7 +60,7 @@ class ForensicvpcStack(Stack):
             direction = _ec2.TrafficDirection.EGRESS
         )
 
-        flows_name = 'vpc-flow-logs-'+str(account)+'-'+region
+        flows_name = 'forensicvpc-flow-logs-'+str(account)+'-'+region
 
         flows = _s3.Bucket(
             self, 'flows',
