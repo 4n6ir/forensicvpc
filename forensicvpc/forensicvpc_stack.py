@@ -72,6 +72,11 @@ class ForensicvpcStack(Stack):
             versioned = True
         )
 
+        flows.add_lifecycle_rule(
+            expiration = Duration.days(403),
+            noncurrent_version_expiration = Duration.days(1)
+        )
+
         vpcflow = _ec2.CfnFlowLog(
             self, 'vpcflow',
             resource_id = vpc.vpc_id,
@@ -98,4 +103,9 @@ class ForensicvpcStack(Stack):
             removal_policy = RemovalPolicy.DESTROY,
             auto_delete_objects = True,
             versioned = True
+        )
+
+        athena.add_lifecycle_rule(
+            expiration = Duration.days(1),
+            noncurrent_version_expiration = Duration.days(1)
         )
