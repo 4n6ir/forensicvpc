@@ -65,7 +65,7 @@ class ForensicvpcStack(Stack):
         flows = _s3.Bucket(
             self, 'flows',
             bucket_name = flows_name,
-            encryption = _s3.BucketEncryption.KMS_MANAGED,
+            encryption = _s3.BucketEncryption.S3_MANAGED,
             block_public_access = _s3.BlockPublicAccess.BLOCK_ALL,
             removal_policy = RemovalPolicy.DESTROY,
             auto_delete_objects = True,
@@ -86,4 +86,16 @@ class ForensicvpcStack(Stack):
                 'HiveCompatiblePartitions': 'true',
                 'PerHourPartition': 'true'
             }
+        )
+
+        athena_name = 'forensicvpc-athena-'+str(account)+'-'+region
+
+        athena = _s3.Bucket(
+            self, 'athena',
+            bucket_name = athena_name,
+            encryption = _s3.BucketEncryption.S3_MANAGED,
+            block_public_access = _s3.BlockPublicAccess.BLOCK_ALL,
+            removal_policy = RemovalPolicy.DESTROY,
+            auto_delete_objects = True,
+            versioned = True
         )
