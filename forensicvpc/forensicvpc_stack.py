@@ -3,6 +3,7 @@ from aws_cdk import (
     RemovalPolicy,
     Stack,
     aws_ec2 as _ec2,
+    aws_glue_alpha as _glue,
     aws_iam as _iam,
     aws_s3 as _s3
 )
@@ -147,6 +148,7 @@ class ForensicvpcStack(Stack):
         glue.add_to_policy(
             _iam.PolicyStatement(
                 actions = [
+                    's3:GetObject',
                     's3:PutObject'
                 ],
                 resources = [
@@ -156,4 +158,167 @@ class ForensicvpcStack(Stack):
             )
         )
 
+### GLUE ###
 
+        database = _glue.Database(
+            self, 'database',
+            database_name = 'forensicvpc'
+        )
+
+        vpcflows =  _glue.Table(
+            self, 'vpcflows',
+            bucket = flows,
+            database = database,
+            s3_prefix = 'AWSLogs',
+            table_name = 'flowlogs',
+            columns = [
+                _glue.Column(
+                    name = 'version',
+                    type = _glue.Schema.INTEGER
+                ),
+                _glue.Column(
+                    name = 'account_id',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'interface_id',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'srcaddr',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'dstaddr',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'srcport',
+                    type = _glue.Schema.INTEGER
+                ),
+                _glue.Column(
+                    name = 'dstport',
+                    type = _glue.Schema.INTEGER
+                ),
+                _glue.Column(
+                    name = 'protocol',
+                    type = _glue.Schema.INTEGER
+                ),
+                _glue.Column(
+                    name = 'packets',
+                    type = _glue.Schema.BIG_INT
+                ),
+                _glue.Column(
+                    name = 'bytes',
+                    type = _glue.Schema.BIG_INT
+                ),
+                _glue.Column(
+                    name = 'start',
+                    type = _glue.Schema.BIG_INT
+                ),
+                _glue.Column(
+                    name = 'end',
+                    type = _glue.Schema.BIG_INT
+                ),
+                _glue.Column(
+                    name = 'action',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'log_status',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'vpc_id',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'subnet_id',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'instance_id',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'tcp_flags',
+                    type = _glue.Schema.INTEGER
+                ),
+                _glue.Column(
+                    name = 'type',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'pkt_srcaddr',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'pkt_dstaddr',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'region',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'az_id',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'sublocation_type',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'sublocation_id',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'pkt_src_aws_service',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'pkt_dst_aws_service',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'flow_direction',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'traffic_path',
+                    type = _glue.Schema.INTEGER
+                )
+            ],
+            partition_keys = [
+                _glue.Column(
+                    name = 'aws-account-id',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'aws-service',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'aws-region',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'year',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'month',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'day',
+                    type = _glue.Schema.STRING
+                ),
+                _glue.Column(
+                    name = 'hour',
+                    type = _glue.Schema.STRING
+                )
+            ],
+            data_format = _glue.DataFormat.PARQUET,
+            enable_partition_filtering = True
+        )
