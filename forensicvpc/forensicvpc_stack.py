@@ -3,6 +3,7 @@ from aws_cdk import (
     RemovalPolicy,
     Stack,
     aws_ec2 as _ec2,
+    aws_iam as _iam,
     aws_s3 as _s3
 )
 
@@ -15,6 +16,8 @@ class ForensicvpcStack(Stack):
 
         account = Stack.of(self).account
         region = Stack.of(self).region
+
+### VPC ###
 
         vpc = _ec2.Vpc(
             self, 'vpc',
@@ -36,6 +39,8 @@ class ForensicvpcStack(Stack):
                 )
             }
         )
+
+### NACL ###
 
         nacl = _ec2.NetworkAcl(
             self, 'nacl',
@@ -59,6 +64,8 @@ class ForensicvpcStack(Stack):
             rule_action = _ec2.Action.ALLOW,
             direction = _ec2.TrafficDirection.EGRESS
         )
+
+### FLOWS ###
 
         flows_name = 'forensicvpc-flow-logs-'+str(account)+'-'+region
 
@@ -93,6 +100,8 @@ class ForensicvpcStack(Stack):
             }
         )
 
+### ATHENA ###
+
         athena_name = 'forensicvpc-athena-'+str(account)+'-'+region
 
         athena = _s3.Bucket(
@@ -109,3 +118,42 @@ class ForensicvpcStack(Stack):
             expiration = Duration.days(1),
             noncurrent_version_expiration = Duration.days(1)
         )
+
+### IAM ###
+
+        glue = _iam.Role(
+            self, 'glue',
+            assumed_by = _iam.ServicePrincipal('glue.amazonaws.com')
+        ) 
+
+        glue.add_managed_policy(
+            _iam.ManagedPolicy.from_aws_managed_policy_name(
+                'service-role/AWSGlueServiceRole'
+            )
+        )
+
+        glue.add_to_policy(
+            _iam.PolicyStatement(
+                actions = [
+                    's3:GetObject'
+                ],
+                resources = [
+                    flows.bucket_arn,
+                    flows.arn_for_objects('*')
+                ]
+            )
+        )
+
+        glue.add_to_policy(
+            _iam.PolicyStatement(
+                actions = [
+                    's3:PutObject'
+                ],
+                resources = [
+                    athena.bucket_arn,
+                    athena.arn_for_objects('*')
+                ]
+            )
+        )
+
+
