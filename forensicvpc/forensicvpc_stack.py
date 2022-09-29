@@ -437,3 +437,43 @@ class ForensicvpcStack(Stack):
                 repair
             )
         )
+
+### PARSE LOGS ###
+
+        parse = _lambda.Function(
+            self, 'parse',
+            runtime = _lambda.Runtime.PYTHON_3_9,
+            code = _lambda.Code.from_asset('parse'),
+            architecture = _lambda.Architecture.ARM_64,
+            timeout = Duration.seconds(900),
+            handler = 'parse.handler',
+            environment = dict(
+                BUCKET = athena.bucket_name
+            ),
+            memory_size = 128,
+            role = role
+        )
+
+        parselogs = _logs.LogGroup(
+            self, 'parselogs',
+            log_group_name = '/aws/lambda/'+parse.function_name,
+            retention = _logs.RetentionDays.ONE_DAY,
+            removal_policy = RemovalPolicy.DESTROY
+        )
+
+        parseevent = _events.Rule(
+            self, 'parseevent',
+            schedule = _events.Schedule.cron(
+                minute = '5',
+                hour = '*',
+                month = '*',
+                week_day = '*',
+                year = '*'
+            )
+        )
+
+        parseevent.add_target(
+            _targets.LambdaFunction(
+                parse
+            )
+        )
