@@ -3,8 +3,12 @@ from aws_cdk import (
     RemovalPolicy,
     Stack,
     aws_ec2 as _ec2,
+    aws_events as _events,
+    aws_events_targets as _targets,
     aws_glue_alpha as _glue,
     aws_iam as _iam,
+    aws_lambda as _lambda,
+    aws_logs as _logs,
     aws_s3 as _s3
 )
 
@@ -321,4 +325,115 @@ class ForensicvpcStack(Stack):
             ],
             data_format = _glue.DataFormat.PARQUET,
             enable_partition_filtering = True
+        )
+
+### ROLE ###
+
+        role = _iam.Role(
+            self, 'role',
+            assumed_by = _iam.CompositePrincipal(
+                _iam.ServicePrincipal('glue.amazonaws.com'),
+                _iam.ServicePrincipal('lambda.amazonaws.com')
+            )
+        )
+
+        role.add_managed_policy(
+            _iam.ManagedPolicy.from_aws_managed_policy_name(
+                'service-role/AWSGlueServiceRole'
+            )
+        )
+
+        role.add_managed_policy(
+            _iam.ManagedPolicy.from_aws_managed_policy_name(
+                'service-role/AWSLambdaBasicExecutionRole'
+            )
+        )
+
+        role.add_to_policy(
+            _iam.PolicyStatement(
+                actions = [
+                    'athena:CreateWorkGroup',
+                    'athena:DeleteWorkGroup',
+                    'athena:GetWorkGroup',
+                    'athena:ListEngineVersions',
+                    'athena:StartQueryExecution',
+                    'athena:StopQueryExecution',
+                    'athena:UpdateWorkGroup',
+                    'glue:GetDatabase',
+                    'glue:GetDatabases',
+                    'glue:GetTable',
+                    'glue:GetTables',
+                    'glue:GetPartition',
+                    'glue:GetPartitions',
+                    'glue:BatchGetPartition'
+                ],
+                resources = [
+                    '*'
+                ]
+            )
+        )
+
+        role.add_to_policy(
+            _iam.PolicyStatement(
+                actions = [
+                    's3:GetObject'
+                ],
+                resources = [
+                    flows.bucket_arn,
+                    flows.arn_for_objects('*')
+                ]
+            )
+        )
+
+        role.add_to_policy(
+            _iam.PolicyStatement(
+                actions = [
+                    's3:GetObject',
+                    's3:PutObject'
+                ],
+                resources = [
+                    athena.bucket_arn,
+                    athena.arn_for_objects('*')
+                ]
+            )
+        )
+
+### REPAIR TABLE ###
+
+        repair = _lambda.Function(
+            self, 'repair',
+            runtime = _lambda.Runtime.PYTHON_3_9,
+            code = _lambda.Code.from_asset('repair'),
+            architecture = _lambda.Architecture.ARM_64,
+            timeout = Duration.seconds(900),
+            handler = 'repair.handler',
+            environment = dict(
+                BUCKET = athena.bucket_name
+            ),
+            memory_size = 128,
+            role = role
+        )
+
+        repairlogs = _logs.LogGroup(
+            self, 'repairlogs',
+            log_group_name = '/aws/lambda/'+repair.function_name,
+            retention = _logs.RetentionDays.ONE_DAY,
+            removal_policy = RemovalPolicy.DESTROY
+        )
+
+        repairevent = _events.Rule(
+            self, 'repairevent',
+            schedule = _events.Schedule.cron(
+                minute = '1',
+                hour = '*',
+                month = '*',
+                week_day = '*',
+                year = '*'
+            )
+        )
+
+        repairevent.add_target(
+            _targets.LambdaFunction(
+                repair
+            )
         )
