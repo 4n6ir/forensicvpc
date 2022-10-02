@@ -2,6 +2,7 @@ from aws_cdk import (
     Duration,
     RemovalPolicy,
     Stack,
+    aws_dynamodb as _dynamodb,
     aws_ec2 as _ec2,
     aws_events as _events,
     aws_events_targets as _targets,
@@ -9,7 +10,11 @@ from aws_cdk import (
     aws_iam as _iam,
     aws_lambda as _lambda,
     aws_logs as _logs,
-    aws_s3 as _s3
+    aws_s3 as _s3,
+    aws_s3_notifications as _notifications,
+    aws_ssm as _ssm,
+    aws_stepfunctions as _sfn,
+    aws_stepfunctions_tasks as _tasks
 )
 
 from constructs import Construct
@@ -359,13 +364,16 @@ class ForensicvpcStack(Stack):
                     'athena:StartQueryExecution',
                     'athena:StopQueryExecution',
                     'athena:UpdateWorkGroup',
+                    'dynamodb:BatchWriteItem',
                     'glue:GetDatabase',
                     'glue:GetDatabases',
                     'glue:GetTable',
                     'glue:GetTables',
                     'glue:GetPartition',
                     'glue:GetPartitions',
-                    'glue:BatchGetPartition'
+                    'glue:BatchGetPartition',
+                    'ssm:GetParameter',
+                    'states:StartExecution'
                 ],
                 resources = [
                     '*'
@@ -476,4 +484,144 @@ class ForensicvpcStack(Stack):
             _targets.LambdaFunction(
                 parse
             )
+        )
+
+### DYNAMODB ###
+
+        table = _dynamodb.Table(
+            self, 'table',
+            partition_key = {
+                'name': 'pk',
+                'type': _dynamodb.AttributeType.STRING
+            },
+            sort_key = {
+                'name': 'sk',
+                'type': _dynamodb.AttributeType.STRING
+            },
+            billing_mode = _dynamodb.BillingMode.PAY_PER_REQUEST,
+            removal_policy = RemovalPolicy.DESTROY,
+            point_in_time_recovery = True
+        )
+
+### START STEP FUNCTION ###
+
+        start = _lambda.Function(
+            self, 'start',
+            runtime = _lambda.Runtime.PYTHON_3_9,
+            code = _lambda.Code.from_asset('start'),
+            architecture = _lambda.Architecture.ARM_64,
+            timeout = Duration.seconds(900),
+            handler = 'start.handler',
+            environment = dict(
+                DYNAMODB_TABLE = table.table_name,
+                STEP_FUNCTION = '/forensicvpc/statemachine'
+                
+            ),
+            memory_size = 128,
+            role = role
+        )
+
+        startlogs = _logs.LogGroup(
+            self, 'startlogs',
+            log_group_name = '/aws/lambda/'+start.function_name,
+            retention = _logs.RetentionDays.ONE_DAY,
+            removal_policy = RemovalPolicy.DESTROY
+        )
+
+        notify = _notifications.LambdaDestination(start)
+        athena.add_event_notification(_s3.EventType.OBJECT_CREATED, notify)
+
+### STEP FUNCTION PASSTHRU ###
+
+        passthru = _lambda.Function(
+            self, 'passthru',
+            runtime = _lambda.Runtime.PYTHON_3_9,
+            code = _lambda.Code.from_asset('passthru'),
+            architecture = _lambda.Architecture.ARM_64,
+            timeout = Duration.seconds(900),
+            handler = 'passthru.handler',
+            memory_size = 128,
+            role = role
+        )
+
+        passthrulogs = _logs.LogGroup(
+            self, 'passthrulogs',
+            log_group_name = '/aws/lambda/'+passthru.function_name,
+            retention = _logs.RetentionDays.ONE_DAY,
+            removal_policy = RemovalPolicy.DESTROY
+        )
+
+### STEP FUNCTION READER LAMBDA ###
+
+        reader = _lambda.DockerImageFunction(
+            self, 'reader',
+            code = _lambda.DockerImageCode.from_image_asset('reader'),
+            timeout = Duration.seconds(900),
+            memory_size = 256,
+            role = role
+        )
+
+        readerlogs = _logs.LogGroup(
+            self, 'readerlogs',
+            log_group_name = '/aws/lambda/'+reader.function_name,
+            retention = _logs.RetentionDays.ONE_DAY,
+            removal_policy = RemovalPolicy.DESTROY
+        )
+
+### STEP FUNCTION ###
+
+        initial = _tasks.LambdaInvoke(
+            self, 'initial',
+            lambda_function = passthru,
+            output_path = '$.Payload',
+        )
+
+        read = _tasks.LambdaInvoke(
+            self, 'read',
+            lambda_function = reader,
+            output_path = '$.Payload',
+        )
+
+        failed = _sfn.Fail(
+            self, 'failed',
+            cause = 'Failed',
+            error = 'FAILED'
+        )
+
+        succeed = _sfn.Succeed(
+            self, 'succeeded',
+            comment = 'SUCCEEDED'
+        )
+
+        definition = initial.next(read) \
+            .next(_sfn.Choice(self, 'Completed?')
+                .when(_sfn.Condition.string_equals('$.status', 'FAILED'), failed)
+                .when(_sfn.Condition.string_equals('$.status', 'SUCCEEDED'), succeed)
+                .otherwise(read)
+            )
+            
+        statelogs = _logs.LogGroup(
+            self, 'statelogs',
+            log_group_name = '/aws/state/forensicvpc',
+            retention = _logs.RetentionDays.ONE_DAY,
+            removal_policy = RemovalPolicy.DESTROY
+        )
+
+### ^^^ ADD MONITOR ^^^
+    
+        state = _sfn.StateMachine(
+            self, 'forensicvpc',
+            definition = definition,
+            logs = _sfn.LogOptions(
+                destination = statelogs,
+                level = _sfn.LogLevel.ALL
+            )
+        )
+
+        statessm = _ssm.StringParameter(
+            self, 'statessm',
+            description = 'Forensic VPC State Machine',
+            parameter_name = '/forensicvpc/statemachine',
+            string_value = state.state_machine_arn,
+            tier = _ssm.ParameterTier.STANDARD
         )
