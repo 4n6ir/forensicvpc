@@ -45,7 +45,9 @@ def handler(event, context):
                     Item = {
                         'pk': output[0],
                         'sk': '#'+state+'#'+source+'#'+year+'#'+month+'#'+day+'#'+hour,
-                        'count': output[1]
+                        'count': output[1],
+                        'account': output[2],
+                        'region': output[3]
                     }    
                 )
 

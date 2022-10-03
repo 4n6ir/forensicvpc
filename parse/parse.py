@@ -18,28 +18,28 @@ def handler(event, context):
     ### ACCEPT ###
 
     response = client.start_query_execution(
-        QueryString = "UNLOAD (SELECT DISTINCT(srcaddr), COUNT(*) AS addrCount FROM forensicvpc.flowlogs WHERE year = '"+dated[0]+"' AND month = '"+dated[1]+"' AND day = '"+dated[2]+"' AND hour = '"+timed[0]+"' AND action = 'ACCEPT' GROUP BY srcaddr) TO 's3://"+os.environ['BUCKET']+"/accept/srcaddr/"+fname+"/' WITH (format = 'TEXTFILE', field_delimiter = ',')",
+        QueryString = "UNLOAD (SELECT DISTINCT(srcaddr), COUNT(*) AS addrCount, account_id, region FROM forensicvpc.flowlogs WHERE year = '"+dated[0]+"' AND month = '"+dated[1]+"' AND day = '"+dated[2]+"' AND hour = '"+timed[0]+"' AND action = 'ACCEPT' GROUP BY srcaddr, account_id, region) TO 's3://"+os.environ['BUCKET']+"/accept/srcaddr/"+fname+"/' WITH (format = 'TEXTFILE', field_delimiter = ',')",
         ResultConfiguration = {
             'OutputLocation': 's3://'+os.environ['BUCKET']+'/Temp/'
         }
     )
 
     response = client.start_query_execution(
-        QueryString = "UNLOAD (SELECT DISTINCT(dstaddr), COUNT(*) AS addrCount FROM forensicvpc.flowlogs WHERE year = '"+dated[0]+"' AND month = '"+dated[1]+"' AND day = '"+dated[2]+"' AND hour = '"+timed[0]+"' AND action = 'ACCEPT' GROUP BY dstaddr) TO 's3://"+os.environ['BUCKET']+"/accept/dstaddr/"+fname+"/' WITH (format = 'TEXTFILE', field_delimiter = ',')",
+        QueryString = "UNLOAD (SELECT DISTINCT(dstaddr), COUNT(*) AS addrCount, account_id, region FROM forensicvpc.flowlogs WHERE year = '"+dated[0]+"' AND month = '"+dated[1]+"' AND day = '"+dated[2]+"' AND hour = '"+timed[0]+"' AND action = 'ACCEPT' GROUP BY dstaddr, account_id, region) TO 's3://"+os.environ['BUCKET']+"/accept/dstaddr/"+fname+"/' WITH (format = 'TEXTFILE', field_delimiter = ',')",
         ResultConfiguration = {
             'OutputLocation': 's3://'+os.environ['BUCKET']+'/Temp/'
         }
     )
 
     response = client.start_query_execution(
-        QueryString = "UNLOAD (SELECT DISTINCT(pkt_srcaddr), COUNT(*) AS addrCount FROM forensicvpc.flowlogs WHERE year = '"+dated[0]+"' AND month = '"+dated[1]+"' AND day = '"+dated[2]+"' AND hour = '"+timed[0]+"' AND action = 'ACCEPT' GROUP BY pkt_srcaddr) TO 's3://"+os.environ['BUCKET']+"/accept/pkt_srcaddr/"+fname+"/' WITH (format = 'TEXTFILE', field_delimiter = ',')",
+        QueryString = "UNLOAD (SELECT DISTINCT(pkt_srcaddr), COUNT(*) AS addrCount, account_id, region FROM forensicvpc.flowlogs WHERE year = '"+dated[0]+"' AND month = '"+dated[1]+"' AND day = '"+dated[2]+"' AND hour = '"+timed[0]+"' AND action = 'ACCEPT' GROUP BY pkt_srcaddr, account_id, region) TO 's3://"+os.environ['BUCKET']+"/accept/pkt_srcaddr/"+fname+"/' WITH (format = 'TEXTFILE', field_delimiter = ',')",
         ResultConfiguration = {
             'OutputLocation': 's3://'+os.environ['BUCKET']+'/Temp/'
         }
     )
 
     response = client.start_query_execution(
-        QueryString = "UNLOAD (SELECT DISTINCT(pkt_dstaddr), COUNT(*) AS addrCount FROM forensicvpc.flowlogs WHERE year = '"+dated[0]+"' AND month = '"+dated[1]+"' AND day = '"+dated[2]+"' AND hour = '"+timed[0]+"' AND action = 'ACCEPT' GROUP BY pkt_dstaddr) TO 's3://"+os.environ['BUCKET']+"/accept/pkt_dstaddr/"+fname+"/' WITH (format = 'TEXTFILE', field_delimiter = ',')",
+        QueryString = "UNLOAD (SELECT DISTINCT(pkt_dstaddr), COUNT(*) AS addrCount, account_id, region FROM forensicvpc.flowlogs WHERE year = '"+dated[0]+"' AND month = '"+dated[1]+"' AND day = '"+dated[2]+"' AND hour = '"+timed[0]+"' AND action = 'ACCEPT' GROUP BY pkt_dstaddr, account_id, region) TO 's3://"+os.environ['BUCKET']+"/accept/pkt_dstaddr/"+fname+"/' WITH (format = 'TEXTFILE', field_delimiter = ',')",
         ResultConfiguration = {
             'OutputLocation': 's3://'+os.environ['BUCKET']+'/Temp/'
         }
@@ -48,28 +48,28 @@ def handler(event, context):
     ### REJECT ###
 
     response = client.start_query_execution(
-        QueryString = "UNLOAD (SELECT DISTINCT(srcaddr), COUNT(*) AS addrCount FROM forensicvpc.flowlogs WHERE year = '"+dated[0]+"' AND month = '"+dated[1]+"' AND day = '"+dated[2]+"' AND hour = '"+timed[0]+"' AND action = 'REJECT' GROUP BY srcaddr) TO 's3://"+os.environ['BUCKET']+"/reject/srcaddr/"+fname+"/' WITH (format = 'TEXTFILE', field_delimiter = ',')",
+        QueryString = "UNLOAD (SELECT DISTINCT(srcaddr), COUNT(*) AS addrCount, account_id, region FROM forensicvpc.flowlogs WHERE year = '"+dated[0]+"' AND month = '"+dated[1]+"' AND day = '"+dated[2]+"' AND hour = '"+timed[0]+"' AND action = 'REJECT' GROUP BY srcaddr, account_id, region) TO 's3://"+os.environ['BUCKET']+"/reject/srcaddr/"+fname+"/' WITH (format = 'TEXTFILE', field_delimiter = ',')",
         ResultConfiguration = {
             'OutputLocation': 's3://'+os.environ['BUCKET']+'/Temp/'
         }
     )
 
     response = client.start_query_execution(
-        QueryString = "UNLOAD (SELECT DISTINCT(dstaddr), COUNT(*) AS addrCount FROM forensicvpc.flowlogs WHERE year = '"+dated[0]+"' AND month = '"+dated[1]+"' AND day = '"+dated[2]+"' AND hour = '"+timed[0]+"' AND action = 'REJECT' GROUP BY dstaddr) TO 's3://"+os.environ['BUCKET']+"/reject/dstaddr/"+fname+"/' WITH (format = 'TEXTFILE', field_delimiter = ',')",
+        QueryString = "UNLOAD (SELECT DISTINCT(dstaddr), COUNT(*) AS addrCount, account_id, region FROM forensicvpc.flowlogs WHERE year = '"+dated[0]+"' AND month = '"+dated[1]+"' AND day = '"+dated[2]+"' AND hour = '"+timed[0]+"' AND action = 'REJECT' GROUP BY dstaddr, account_id, region) TO 's3://"+os.environ['BUCKET']+"/reject/dstaddr/"+fname+"/' WITH (format = 'TEXTFILE', field_delimiter = ',')",
         ResultConfiguration = {
             'OutputLocation': 's3://'+os.environ['BUCKET']+'/Temp/'
         }
     )
 
     response = client.start_query_execution(
-        QueryString = "UNLOAD (SELECT DISTINCT(pkt_srcaddr), COUNT(*) AS addrCount FROM forensicvpc.flowlogs WHERE year = '"+dated[0]+"' AND month = '"+dated[1]+"' AND day = '"+dated[2]+"' AND hour = '"+timed[0]+"' AND action = 'REJECT' GROUP BY pkt_srcaddr) TO 's3://"+os.environ['BUCKET']+"/reject/pkt_srcaddr/"+fname+"/' WITH (format = 'TEXTFILE', field_delimiter = ',')",
+        QueryString = "UNLOAD (SELECT DISTINCT(pkt_srcaddr), COUNT(*) AS addrCount, account_id, region FROM forensicvpc.flowlogs WHERE year = '"+dated[0]+"' AND month = '"+dated[1]+"' AND day = '"+dated[2]+"' AND hour = '"+timed[0]+"' AND action = 'REJECT' GROUP BY pkt_srcaddr, account_id, region) TO 's3://"+os.environ['BUCKET']+"/reject/pkt_srcaddr/"+fname+"/' WITH (format = 'TEXTFILE', field_delimiter = ',')",
         ResultConfiguration = {
             'OutputLocation': 's3://'+os.environ['BUCKET']+'/Temp/'
         }
     )
 
     response = client.start_query_execution(
-        QueryString = "UNLOAD (SELECT DISTINCT(pkt_dstaddr), COUNT(*) AS addrCount FROM forensicvpc.flowlogs WHERE year = '"+dated[0]+"' AND month = '"+dated[1]+"' AND day = '"+dated[2]+"' AND hour = '"+timed[0]+"' AND action = 'REJECT' GROUP BY pkt_dstaddr) TO 's3://"+os.environ['BUCKET']+"/reject/pkt_dstaddr/"+fname+"/' WITH (format = 'TEXTFILE', field_delimiter = ',')",
+        QueryString = "UNLOAD (SELECT DISTINCT(pkt_dstaddr), COUNT(*) AS addrCount, account_id, region FROM forensicvpc.flowlogs WHERE year = '"+dated[0]+"' AND month = '"+dated[1]+"' AND day = '"+dated[2]+"' AND hour = '"+timed[0]+"' AND action = 'REJECT' GROUP BY pkt_dstaddr, account_id, region) TO 's3://"+os.environ['BUCKET']+"/reject/pkt_dstaddr/"+fname+"/' WITH (format = 'TEXTFILE', field_delimiter = ',')",
         ResultConfiguration = {
             'OutputLocation': 's3://'+os.environ['BUCKET']+'/Temp/'
         }
