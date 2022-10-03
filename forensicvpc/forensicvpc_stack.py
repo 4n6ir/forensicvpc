@@ -1,3 +1,6 @@
+import boto3
+import sys
+
 from aws_cdk import (
     Duration,
     RemovalPolicy,
@@ -10,8 +13,11 @@ from aws_cdk import (
     aws_iam as _iam,
     aws_lambda as _lambda,
     aws_logs as _logs,
+    aws_logs_destinations as _destinations,
     aws_s3 as _s3,
     aws_s3_notifications as _notifications,
+    aws_sns as _sns,
+    aws_sns_subscriptions as _subs,
     aws_ssm as _ssm,
     aws_stepfunctions as _sfn,
     aws_stepfunctions_tasks as _tasks
@@ -26,6 +32,24 @@ class ForensicvpcStack(Stack):
 
         account = Stack.of(self).account
         region = Stack.of(self).region
+
+        try:
+            client = boto3.client('account')
+            operations = client.get_alternate_contact(
+                AlternateContactType='OPERATIONS'
+            )
+        except:
+            print('Missing IAM Permission --> account:GetAlternateContact')
+            sys.exit(1)
+            pass
+
+        operationstopic = _sns.Topic(
+            self, 'operationstopic'
+        )
+
+        operationstopic.add_subscription(
+            _subs.EmailSubscription(operations['AlternateContact']['EmailAddress'])
+        )
 
 ### VPC ###
 
@@ -406,6 +430,40 @@ class ForensicvpcStack(Stack):
             )
         )
 
+        role.add_to_policy(
+            _iam.PolicyStatement(
+                actions = [
+                    'sns:Publish'
+                ],
+                resources = [
+                    operationstopic.topic_arn
+                ]
+            )
+        )
+
+### ERROR LAMBDA ###
+
+        error = _lambda.Function(
+            self, 'error',
+            runtime = _lambda.Runtime.PYTHON_3_9,
+            code = _lambda.Code.from_asset('error'),
+            handler = 'error.handler',
+            role = role,
+            environment = dict(
+                SNS_TOPIC = operationstopic.topic_arn
+            ),
+            architecture = _lambda.Architecture.ARM_64,
+            timeout = Duration.seconds(7),
+            memory_size = 128
+        )
+
+        errormonitor = _logs.LogGroup(
+            self, 'errormonitor',
+            log_group_name = '/aws/lambda/'+error.function_name,
+            retention = _logs.RetentionDays.ONE_DAY,
+            removal_policy = RemovalPolicy.DESTROY
+        )
+
 ### REPAIR TABLE ###
 
         repair = _lambda.Function(
@@ -446,6 +504,20 @@ class ForensicvpcStack(Stack):
             )
         )
 
+        repairsub = _logs.SubscriptionFilter(
+            self, 'repairsub',
+            log_group = repairlogs,
+            destination = _destinations.LambdaDestination(error),
+            filter_pattern = _logs.FilterPattern.all_terms('ERROR')
+        )
+
+        repairtime = _logs.SubscriptionFilter(
+            self, 'repairtime',
+            log_group = repairlogs,
+            destination = _destinations.LambdaDestination(error),
+            filter_pattern = _logs.FilterPattern.all_terms('Task','timed','out')
+        )
+
 ### PARSE LOGS ###
 
         parse = _lambda.Function(
@@ -484,6 +556,20 @@ class ForensicvpcStack(Stack):
             _targets.LambdaFunction(
                 parse
             )
+        )
+
+        parsesub = _logs.SubscriptionFilter(
+            self, 'parsesub',
+            log_group = parselogs,
+            destination = _destinations.LambdaDestination(error),
+            filter_pattern = _logs.FilterPattern.all_terms('ERROR')
+        )
+
+        parsetime = _logs.SubscriptionFilter(
+            self, 'parsetime',
+            log_group = parselogs,
+            destination = _destinations.LambdaDestination(error),
+            filter_pattern = _logs.FilterPattern.all_terms('Task','timed','out')
         )
 
 ### DYNAMODB ###
@@ -531,6 +617,20 @@ class ForensicvpcStack(Stack):
         notify = _notifications.LambdaDestination(start)
         athena.add_event_notification(_s3.EventType.OBJECT_CREATED, notify)
 
+        startsub = _logs.SubscriptionFilter(
+            self, 'startsub',
+            log_group = startlogs,
+            destination = _destinations.LambdaDestination(error),
+            filter_pattern = _logs.FilterPattern.all_terms('ERROR')
+        )
+
+        starttime = _logs.SubscriptionFilter(
+            self, 'starttime',
+            log_group = startlogs,
+            destination = _destinations.LambdaDestination(error),
+            filter_pattern = _logs.FilterPattern.all_terms('Task','timed','out')
+        )
+
 ### STEP FUNCTION PASSTHRU ###
 
         passthru = _lambda.Function(
@@ -551,6 +651,20 @@ class ForensicvpcStack(Stack):
             removal_policy = RemovalPolicy.DESTROY
         )
 
+        passthrusub = _logs.SubscriptionFilter(
+            self, 'passthrusub',
+            log_group = passthrulogs,
+            destination = _destinations.LambdaDestination(error),
+            filter_pattern = _logs.FilterPattern.all_terms('ERROR')
+        )
+
+        passthrutime = _logs.SubscriptionFilter(
+            self, 'passthrutime',
+            log_group = passthrulogs,
+            destination = _destinations.LambdaDestination(error),
+            filter_pattern = _logs.FilterPattern.all_terms('Task','timed','out')
+        )
+
 ### STEP FUNCTION READER LAMBDA ###
 
         reader = _lambda.DockerImageFunction(
@@ -566,6 +680,20 @@ class ForensicvpcStack(Stack):
             log_group_name = '/aws/lambda/'+reader.function_name,
             retention = _logs.RetentionDays.ONE_DAY,
             removal_policy = RemovalPolicy.DESTROY
+        )
+
+        readersub = _logs.SubscriptionFilter(
+            self, 'readersub',
+            log_group = readerlogs,
+            destination = _destinations.LambdaDestination(error),
+            filter_pattern = _logs.FilterPattern.all_terms('ERROR')
+        )
+
+        readertime = _logs.SubscriptionFilter(
+            self, 'readertime',
+            log_group = readerlogs,
+            destination = _destinations.LambdaDestination(error),
+            filter_pattern = _logs.FilterPattern.all_terms('Task','timed','out')
         )
 
 ### STEP FUNCTION ###
@@ -607,7 +735,19 @@ class ForensicvpcStack(Stack):
             removal_policy = RemovalPolicy.DESTROY
         )
 
-### ^^^ ADD MONITOR ^^^
+        statesub = _logs.SubscriptionFilter(
+            self, 'statesub',
+            log_group = statelogs,
+            destination = _destinations.LambdaDestination(error),
+            filter_pattern = _logs.FilterPattern.all_terms('ERROR')
+        )
+
+        statetime = _logs.SubscriptionFilter(
+            self, 'statetime',
+            log_group = statelogs,
+            destination = _destinations.LambdaDestination(error),
+            filter_pattern = _logs.FilterPattern.all_terms('Task','timed','out')
+        )
     
         state = _sfn.StateMachine(
             self, 'forensicvpc',
