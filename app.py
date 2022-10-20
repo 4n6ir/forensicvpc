@@ -18,6 +18,7 @@ ForensicvpcStack(
     )
 )
 
-cdk.Tags.of(app).add('forensicvpc','forensicvpc')
+cdk.Tags.of(app).add('Alias','Pipeline')
+cdk.Tags.of(app).add('GitHub','https://github.com/4n6ir/forensicvpc.git')
 
 app.synth()
