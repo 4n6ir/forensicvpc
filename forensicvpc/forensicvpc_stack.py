@@ -33,6 +33,11 @@ class ForensicvpcStack(Stack):
         account = Stack.of(self).account
         region = Stack.of(self).region
 
+        layer = _lambda.LayerVersion.from_layer_version_arn(
+            self, 'layer',
+            layer_version_arn = 'arn:aws:lambda:'+region+':070176467818:layer:getpublicip:1'
+        )
+
         try:
             client = boto3.client('account')
             operations = client.get_alternate_contact(
@@ -477,7 +482,10 @@ class ForensicvpcStack(Stack):
                 BUCKET = athena.bucket_name
             ),
             memory_size = 128,
-            role = role
+            role = role,
+            layers = [
+                layer
+            ]
         )
 
         repairlogs = _logs.LogGroup(
@@ -531,7 +539,10 @@ class ForensicvpcStack(Stack):
                 BUCKET = athena.bucket_name
             ),
             memory_size = 128,
-            role = role
+            role = role,
+            layers = [
+                layer
+            ]
         )
 
         parselogs = _logs.LogGroup(
@@ -604,7 +615,10 @@ class ForensicvpcStack(Stack):
                 
             ),
             memory_size = 128,
-            role = role
+            role = role,
+            layers = [
+                layer
+            ]
         )
 
         startlogs = _logs.LogGroup(
@@ -641,7 +655,10 @@ class ForensicvpcStack(Stack):
             timeout = Duration.seconds(900),
             handler = 'passthru.handler',
             memory_size = 128,
-            role = role
+            role = role,
+            layers = [
+                layer
+            ]
         )
 
         passthrulogs = _logs.LogGroup(
