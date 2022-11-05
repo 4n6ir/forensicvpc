@@ -1,4 +1,7 @@
+import cdk_nag
+
 from aws_cdk import (
+    Aspects,
     Duration,
     RemovalPolicy,
     Stack,
@@ -26,6 +29,24 @@ class ForensicvpcStack(Stack):
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
+
+        Aspects.of(self).add(
+            cdk_nag.AwsSolutionsChecks(
+                log_ignores = True,
+                verbose = True
+            )
+        )
+
+        cdk_nag.NagSuppressions.add_stack_suppressions(
+            self, suppressions = [
+                {'id': 'AwsSolutions-VPC3','reason': 'GitHub Issue'},
+                {'id': 'AwsSolutions-S1','reason': 'GitHub Issue'},
+                {'id': 'AwsSolutions-S10','reason': 'GitHub Issue'},
+                {'id': 'AwsSolutions-IAM4','reason': 'GitHub Issue'},
+                {'id': 'AwsSolutions-IAM5','reason': 'GitHub Issue'},
+                {'id': 'AwsSolutions-SF2','reason': 'GitHub Issue'}
+            ]
+        )
 
         account = Stack.of(self).account
         region = Stack.of(self).region
@@ -63,7 +84,7 @@ class ForensicvpcStack(Stack):
 
         vpc = _ec2.Vpc(
             self, 'vpc',
-            cidr = '10.255.255.0/24',
+            ip_addresses = _ec2.IpAddresses.cidr('10.255.255.0/24'),
             max_azs = 1,
             nat_gateways = 0,
             enable_dns_hostnames = True,
