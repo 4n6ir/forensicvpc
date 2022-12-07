@@ -41,7 +41,6 @@ class ForensicvpcStack(Stack):
             self, suppressions = [
                 {'id': 'AwsSolutions-VPC3','reason': 'GitHub Issue'},
                 {'id': 'AwsSolutions-S1','reason': 'GitHub Issue'},
-                {'id': 'AwsSolutions-S10','reason': 'GitHub Issue'},
                 {'id': 'AwsSolutions-IAM4','reason': 'GitHub Issue'},
                 {'id': 'AwsSolutions-IAM5','reason': 'GitHub Issue'},
                 {'id': 'AwsSolutions-SF2','reason': 'GitHub Issue'}
@@ -139,6 +138,7 @@ class ForensicvpcStack(Stack):
             block_public_access = _s3.BlockPublicAccess.BLOCK_ALL,
             removal_policy = RemovalPolicy.DESTROY,
             auto_delete_objects = True,
+            enforce_ssl = True,
             versioned = True
         )
 
@@ -174,6 +174,7 @@ class ForensicvpcStack(Stack):
             block_public_access = _s3.BlockPublicAccess.BLOCK_ALL,
             removal_policy = RemovalPolicy.DESTROY,
             auto_delete_objects = True,
+            enforce_ssl = True,
             versioned = True
         )
 
